@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <main id="main-holder">
+        <a href="/logout" id="logout">Logout</a>
+    </main>
+</body>
+
+
+<style>
+    html {
+        height: 100%;
+    }
+
+    body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+        background-color: #3a3a3a;
+    }
+
+    #main-holder {
+        width: 50%;
+        height: 70%;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+        background-color: white;
+        border-radius: 7px;
+        box-shadow: 0px 0px 5px 2px black;
+    }
+</style>
+
+<script>
+    const session = sessionStorage.getItem('session');
+
+    let token;
+
+    try {
+        token = JSON.parse(session).token;
+    } catch (e) { }
+
+    if (token) {
+        axios.get('/api/userinfo', {
+            headers: {
+                Authorization: 'Bearer ' + token
+            }
+        }).then((response) => {
+            const { username } = response.data;
+
+            if (username) {
+                const mainHolder = document.getElementById("main-holder");
+
+                mainHolder.append(`Your username is ${username}`);
+            }
+        }).catch((response) => {
+            let refresh_token = document.cookie.replace(
+                /(?:(?:^|.*;\s*)refresh_token\s*\=\s*([^;]*).*$)|^.*$/,
+                "$1",
+            );
+
+            axios({
+                method: 'post',
+                url: '/api/token/refresh',
+                data: {
+                    refresh_token: refresh_token
+                }
+            }).then((response) => {
+                const { token } = response.data;
+                sessionStorage.setItem('session', JSON.stringify({ token: token }));
+                location.reload();
+            }).catch((response) => {
+                sessionStorage.removeItem('session');
+
+                let refresh_token_index = document.cookie.indexOf('refresh_token');
+                let semicolon_index = document.cookie.indexOf(';', refresh_token_index);
+                document.cookie = document.cookie.slice(0, refresh_token_index + 'refresh_token'.length + 1) + ';' +
+                    + document.cookie.slice(semicolon_index + 1);
+
+                location.href = location.origin + "/login";
+            })
+        });
+    } else {
+        location.href = location.origin + "/login";
+    }
+
+    const logoutLink = document.getElementById("logout");
+
+    logoutLink.addEventListener("click", (e) => {
+        sessionStorage.removeItem('session');
+
+        let refresh_token_index = document.cookie.indexOf('refresh_token');
+        let semicolon_index = document.cookie.indexOf(';', refresh_token_index);
+        document.cookie = document.cookie.slice(0, refresh_token_index + 'refresh_token'.length + 1) + ';' +
+            + document.cookie.slice(semicolon_index + 1);
+    }
+    );
+</script>
+
+</html>

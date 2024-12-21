@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+<main id="main-holder">
+    <a href="/logout" id="logout">Logout</a>
+
+    <small id="login-header" style="position: absolute; top: 0; left: 0; margin: 10px; color: yellow;">Test<br> login:
+        idmi_13194<br>pass: fake_Pass_777</small>
+
+    <div id="login-error-msg-holder">
+        <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+    </div>
+
+    <div id="user-info" style="display: none;">
+        <h3>Персональні дані користувача:</h3>
+        <h5>(доступні лише після успішної аутентифікації):</h5>
+        <p><strong>Login:</strong> <span id="login"></span></p>
+        <p><strong>Email:</strong> <span id="email"></span></p>
+        <p><strong>Name:</strong> <span id="n_name"></span></p>
+        <p><strong>Nickname:</strong> <span id="nickname"></span></p>
+        <p><strong>Expires In:</strong> <span id="expires-in"></span></p>
+        <!--        <button id="get-token-info-btn">Оновити відомості про токен</button>-->
+        <button id="refresh-token-btn">Оновити токен</button>
+    </div>
+
+    <!-- Блок з інформацією про нового користувача -->
+    <div id="new-user-info" style="display: none;">
+        <h2>New User Information:</h2>
+        <p><strong>Login:</strong> <span id="new-login"></span></p>
+        <p><strong>Email:</strong> <span id="new-email"></span></p>
+        <p><strong>Given name:</strong> <span id="given-name"></span></p>
+        <p><strong>Family name:</strong> <span id="family-name"></span></p>
+        <p><strong>Name:</strong> <span id="new-name"></span></p>
+        <p><strong>Nickname:</strong> <span id="new-nickname"></span></p>
+        <p><strong>Password:</strong> <span id="new-pass"></span></p>
+    </div>
+
+    <!-- Грід-контейнер для розміщення форм в дві колонки -->
+    <div class="form-container">
+        <!-- Форма login -->
+        <form id="login-form" action="/api/login" method="post">
+            <h3>Login</h3>
+            <input type="text" name="login" id="login-field" class="login-form-field" placeholder="Login">
+            <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
+            <input type="submit" value="Login" id="login-form-submit">
+        </form>
+        <!-- Форма створення нового користувача -->
+        <form id="registration-form" action="/api/register" method="post">
+            <h3>Registration new user</h3>
+            <input type="text" name="newLogin" id="new-login-field" class="login-form-field" placeholder="Login">
+            <input type="password" name="newPassword" id="new-password-field" class="login-form-field"
+                   placeholder="Password">
+            <input type="submit" value="Register" id="registration-form-submit">
+        </form>
+    </div>
+
+</main>
+</body>
+
+<style>
+    html {
+        height: 100%;
+    }
+
+    body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+        background-color: #3a3a3a;
+    }
+
+    .form-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-column-gap: 20px; /* Відстань між колонками */
+    }
+
+    #logout {
+        opacity: 0;
+    }
+
+    #main-holder {
+        width: 50%;
+        height: 70%;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+        background-color: white;
+        border-radius: 7px;
+        box-shadow: 0px 0px 5px 2px black;
+    }
+
+    #login-error-msg-holder {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+    }
+
+    #login-error-msg {
+        width: 23%;
+        text-align: center;
+        margin: 0;
+        padding: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #8a0000;
+        border: 1px solid #8a0000;
+        background-color: #e58f8f;
+        opacity: 0;
+    }
+
+    #error-msg-second-line {
+        display: block;
+    }
+
+    #login-form,
+    #registration-form {
+        align-self: flex-start;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+    }
+
+    .login-form-field::placeholder {
+        color: #3a3a3a;
+    }
+
+    .login-form-field {
+        border: none;
+        border-bottom: 1px solid #3a3a3a;
+        margin-bottom: 10px;
+        border-radius: 3px;
+        outline: none;
+        padding: 0px 0px 5px 5px;
+    }
+
+    #login-form-submit,
+    #registration-form-submit {
+        width: 70%;
+        padding: 7px;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        background-color: #3a3a3a;
+        cursor: pointer;
+        outline: none;
+    }
+</style>
+
+<script>
+    const session = sessionStorage.getItem('session');
+
+    let token;
+
+    try {
+        token = JSON.parse(session).token;
+    } catch (e) {
+    }
+
+    if (token) {
+        axios.get('http://localhost:3000/', {
+            headers: {
+                Authorization: token
+            }
+        }).then((response) => {
+            const {username, email, nickname} = response.data;
+
+            if (username) {
+                const mainHolder = document.getElementById("main-holder");
+                const loginHeader = document.getElementById("login-header");
+
+                loginForm.remove();
+                loginErrorMsg.remove();
+                loginHeader.remove();
+                registrationForm.remove();
+
+                const UserBlock = document.getElementById("user-info");
+                const Login = document.getElementById("login");
+                const Email = document.getElementById("email");
+                const NName = document.getElementById("n_name");
+                const NickName = document.getElementById("nickname");
+                const ExpiresInElement = document.getElementById("expires-in");
+
+                Login.textContent = response.data.username; // Update
+                Email.textContent = response.data.email;
+                NickName.textContent = response.data.nickname;
+                NName.textContent = response.data.name;
+                ExpiresInElement.textContent = response.data.exp;
+
+                UserBlock.style.display = "block";
+                logoutLink.style.opacity = 1;
+            }
+        });
+    }
+
+    const loginForm = document.getElementById("login-form");
+    const registrationForm = document.getElementById("registration-form");
+
+    const loginButton = document.getElementById("login-form-submit");
+    const refreshTokenButton = document.getElementById("refresh-token-btn");
+    const registrationButton = document.getElementById("registration-form-submit");
+
+    const loginErrorMsg = document.getElementById("login-error-msg");
+    const logoutLink = document.getElementById("logout");
+
+    logoutLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        sessionStorage.removeItem('session');
+        location.reload();
+    });
+
+    loginButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        const login = loginForm.login.value;
+        const password = loginForm.password.value;
+        axios({
+            method: 'post',
+            url: 'http://localhost:3000/api/login',
+            data: {
+                login,
+                password
+            }
+        }).then((response) => {
+            sessionStorage.setItem('session', JSON.stringify(response.data));
+            location.reload();
+        }).catch((response) => {
+            loginErrorMsg.style.opacity = 1;
+        });
+    })
+
+    refreshTokenButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        axios({
+            method: 'post',
+            url: 'http://localhost:3000/api/refresh_token',
+            headers: {
+                "Authorization": token
+            },
+        }).then((response) => {
+            console.log(JSON.stringify(response.data))
+            const ExpiresInElement = document.getElementById("expires-in");
+            ExpiresInElement.textContent = response.data;
+            // location.reload();
+        }).catch((response) => {
+            loginErrorMsg.style.opacity = 1;
+        });
+    })
+
+
+    registrationButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        const login = registrationForm.newLogin.value;
+        const password = registrationForm.newPassword.value;
+        loginErrorMsg.style.opacity = 0;
+
+        axios({
+            method: 'post',
+            url: 'http://localhost:3000/api/register',
+            data: {
+                login,
+                password
+            }
+        }).then((response) => {
+            const newUserBlock = document.getElementById("new-user-info");
+            const newLogin = document.getElementById("new-login");
+            const newEmail = document.getElementById("new-email");
+            const givenName = document.getElementById("given-name");
+            const familyName = document.getElementById("family-name");
+            const newName = document.getElementById("new-name");
+            const nickName = document.getElementById("new-nickname");
+            const newPass = document.getElementById("new-pass");
+
+            newLogin.textContent = response.data.username; // Update username
+            newEmail.textContent = response.data.email;
+            givenName.textContent = response.data.given_name;
+            familyName.textContent = response.data.family_name;
+            newName.textContent = response.data.name; //
+            nickName.textContent = response.data.nickname; //
+            newPass.textContent = response.data.password; // Update pass
+
+            newUserBlock.style.display = "block";
+        }).catch((response) => {
+            loginErrorMsg.style.opacity = 1;
+        });
+    })
+
+
+</script>
+</html>
+
